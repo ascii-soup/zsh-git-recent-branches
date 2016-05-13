@@ -1,10 +1,12 @@
 function __git_recent_branches()
 {
-  local branch
+  local branch current_branch
   local -A branches
+  local -a all_branches
   integer n branch_limit
 
   branch_limit=1000
+  current_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
 
   n=1
   while true;
@@ -12,9 +14,10 @@ function __git_recent_branches()
 
     if branch="$(git rev-parse --abbrev-ref @{-$n} 2>/dev/null)"
     then
-      if [[ -n "$branch" ]]
+      if [[ -n "$branch" && "$branch" != "$current_branch" ]]
       then
         branches[$branch]=$branch
+        all_branches+=$branch
       fi
     else
       break
@@ -28,7 +31,7 @@ function __git_recent_branches()
     (( n++ ))
   done
 
-  reply=(${(v)branches})
+  reply=(${(u)all_branches})
 }
 
 _git-rb()
@@ -44,7 +47,7 @@ _git-rb()
     descriptions+="${branch}:$(git log -1 --pretty=%s $branch --)"
   done
 
-  _describe -V "recent branches" descriptions
+  _describe -V -t recent-branches "recent branches" descriptions
 }
 compdef _git-rb git-rb
 
