@@ -1,26 +1,21 @@
-zstyle -T 'git:branch:recent' 'limit'
-if [[ "$?" != "0" ]]; then
-  zstyle 'git:branch:recent' 'limit' '100'
-fi
-
 function __git_recent_branches()
 {
-    local current_branch branch_limit
+    local reflog
     local -a branches branches_without_current unique_branches
-    current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
-    branches=($(git reflog 2>/dev/null | \grep -Eio "moving from ([^[:space:]]+)" | \awk '{ print $3 }' | \grep -Eiv "[0-9a-f]{40}" | \tr '\n' ' '))
+    reflog=$(git reflog --pretty='%gs' | grep -E "checkout: moving from [^[:space:]]+" | awk '{ print $4 }')
+    branches=(${(f)reflog})
     branches_without_current=("${(@)branches:#$current_branch}")
     unique_branches=(${(u)branches_without_current})
-    echo $unique_branches
+    print -l $unique_branches
 }
 
 _git-rb() {
     local -a branches descriptions
     local branch description
     local -i current
-    local branch_limit
+    integer branch_limit
 
-    zstyle -g branch_limit 'git:branch:recent' 'limit'
+    zstyle -s ":completion:${curcontext}:recent-branches" 'limit' branch_limit || branch_limit=10
     current=0
     for branch in $(__git_recent_branches)
     do
