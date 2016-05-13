@@ -14,6 +14,8 @@ function __git_recent_branches()
 
     if branch="$(git rev-parse --abbrev-ref @{-$n} 2>/dev/null)"
     then
+      # If the branch name is blank, the reflog entry was a
+      # sha not a refname - we're not interested in those
       if [[ -n "$branch" && "$branch" != "$current_branch" ]]
       then
         branches[$branch]=$branch
@@ -44,7 +46,7 @@ _git-rb()
 
   for branch in $reply;
   do
-    descriptions+="${branch}:$(git log -1 --pretty=%s $branch --)"
+    descriptions+="${branch}:${$(git log -1 --pretty=%s $branch --)/:/\:}"
   done
 
   _describe -V -t recent-branches "recent branches" descriptions
