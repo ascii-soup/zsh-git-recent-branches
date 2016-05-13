@@ -1,36 +1,50 @@
 function __git_recent_branches()
 {
-    local reflog
-    local -a branches branches_without_current unique_branches
-    reflog=$(git reflog --pretty='%gs' | grep -E "checkout: moving from [^[:space:]]+" | awk '{ print $4 }')
-    branches=(${(f)reflog})
-    branches_without_current=("${(@)branches:#$current_branch}")
-    unique_branches=(${(u)branches_without_current})
-    print -l $unique_branches
+  local branch
+  local -A branches
+  integer n branch_limit
+
+  branch_limit=1000
+
+  n=1
+  while true;
+  do
+
+    if branch="$(git rev-parse --abbrev-ref @{-$n} 2>/dev/null)"
+    then
+      if [[ -n "$branch" ]]
+      then
+        branches[$branch]=$branch
+      fi
+    else
+      break
+    fi
+
+    if (( $#branches == $branch_limit ));
+    then
+      break
+    fi
+
+    (( n++ ))
+  done
+
+  reply=(${(v)branches})
 }
 
-_git-rb() {
-    local -a branches descriptions
-    local branch description
-    local -i current
-    integer branch_limit
+_git-rb()
+{
+  local -a descriptions
+  local branch
 
-    zstyle -s ":completion:${curcontext}:recent-branches" 'limit' branch_limit || branch_limit=10
-    current=0
-    for branch in $(__git_recent_branches)
-    do
-        description=$(git log -1 --pretty=%s ${branch} -- 2>/dev/null)
-        if [[ -n "$description" ]]; then
-          branches+=$branch
-          descriptions+="${branch}:${description/:/\:/}"
-          (( current++ ))
-          if [[ $current == $branch_limit ]]; then
-            break
-          fi
-        fi
-    done
+  local reply
+  __git_recent_branches
 
-    _describe "recent branches" descriptions -V branches
+  for branch in $reply;
+  do
+    descriptions+="${branch}:$(git log -1 --pretty=%s $branch --)"
+  done
+
+  _describe -V "recent branches" descriptions
 }
 compdef _git-rb git-rb
 
